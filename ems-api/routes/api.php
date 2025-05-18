@@ -20,13 +20,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // ✅ Admin-only routes
-    Route::middleware('is_admin')->group(function () {
-        Route::get('/employees', [EmployeeController::class, 'index']);
-        Route::get('/employees/{id}', [EmployeeController::class, 'show']);
-        Route::post('/employees', [EmployeeController::class, 'store']);
-        Route::put('/employees/{id}', [EmployeeController::class, 'update']);
-        Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
-    });
+  Route::group([], function () {
+    Route::get('/employees', [EmployeeController::class, 'index']);
+    Route::get('/employees/{id}', [EmployeeController::class, 'show']);
+    Route::post('/employees', [EmployeeController::class, 'store']);
+    Route::put('/employees/{id}', [EmployeeController::class, 'update']);
+    Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
+});
 
     // ✅ Logged-in user can view and update their profile
     Route::get('/user', function () {

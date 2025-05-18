@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
-    {
+   public function register(Request $request)
+{
+    try {
         $fields = $request->validate([
             'name' => 'required|string',
             'email' => 'required|string|email|unique:users,email',
@@ -31,7 +32,22 @@ class AuthController extends Controller
             'user' => $user,
             'token' => $token,
         ], 201);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Validation errors
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $e->errors(),
+        ], 422);
+
+    } catch (\Exception $e) {
+        // Any other error
+        return response()->json([
+            'message' => 'Registration failed',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     public function login(Request $request)
     {

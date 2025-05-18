@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class EmployeeController extends Controller
@@ -23,58 +24,89 @@ class EmployeeController extends Controller
     }
 
     // 3. Add a new employee (Admin only)
-    public function store(Request $request)
+
+public function store(Request $request)
 {
     try {
+        Log::info('🚀 Entered store() method.');
+
+        // Step 1: Validate the request
+        Log::info('🛡️ Validating request data...', ['request' => $request->all()]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
             'department' => 'nullable|string|max:255',
             'designation' => 'nullable|string|max:255',
-            'salary' => 'nullable|numeric',
+            'salary' => 'nullable|numeric|min:0',
             'joining_date' => 'nullable|date',
         ]);
 
-        $validated['role'] = 'employee'; // default role
-        $validated['password'] = bcrypt($validated['password']);
+        Log::info('✅ Validation passed.', ['validated' => $validated]);
 
+        // Step 2: Add additional fields
+        $validated['role'] = 'employee';
+        $validated['password'] = Hash::make($validated['password']);
+
+        Log::info('🧾 Data ready for DB insert.', ['data' => $validated]);
+
+        // Step 3: Create employee
         $employee = User::create($validated);
+
+        Log::info('🎉 User created successfully.', ['user' => $employee]);
 
         return response()->json($employee, 201);
 
-    } catch (\Exception $e) {
+    } catch (ValidationException $e) {
+        Log::warning('❌ Validation failed.', ['errors' => $e->errors()]);
         return response()->json([
-            'error' => 'Something went wrong.',
-            'message' => $e->getMessage()
+            'error' => 'Validation failed.',
+            'messages' => $e->errors(),
+        ], 422);
+
+    } catch (QueryException $e) {
+        Log::error('💥 Database error: ' . $e->getMessage());
+        return response()->json([
+            'error' => 'Database error.',
+            'message' => 'A database error occurred while saving the employee.',
+        ], 500);
+
+    } catch (\Exception $e) {
+        Log::error('🔥 Unexpected server error: ' . $e->getMessage());
+        return response()->json([
+            'error' => 'Server error.',
+            'message' => 'An unexpected error occurred.',
         ], 500);
     }
 }
 
     // 4. Update employee
-    public function update(Request $request, $id)
-    {
-        $employee = User::where('role', 'employee')->findOrFail($id);
+public function update(Request $request, $id)
+{
+    $employee = User::where('role', 'employee')->where('id', $id)->firstOrFail();
 
-        $fields = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:users,email,' . $employee->id,
-            'department' => 'nullable|string|max:255',
-            'designation' => 'nullable|string|max:255',
-            'joining_date' => 'nullable|date',
-            'salary' => 'nullable|numeric',
-            'password' => 'nullable|min:6',
-        ]);
+    $fields = $request->validate([
+        'name' => 'nullable|string|max:255',
+        'email' => 'nullable|email|unique:users,email,' . $employee->id,
+        'department' => 'nullable|string|max:255',
+        'designation' => 'nullable|string|max:255',
+        'joining_date' => 'nullable|date',
+        'salary' => 'nullable|numeric',
+        'password' => 'nullable|min:6',
+    ]);
 
-        // Update password if provided
-        if (isset($fields['password'])) {
-            $fields['password'] = Hash::make($fields['password']);
-        }
-
-        $employee->update($fields);
-
-        return response()->json($employee, 200);
+    if (!empty($fields['password'])) {
+        $fields['password'] = Hash::make($fields['password']);
+    } else {
+        unset($fields['password']);
     }
+
+    $employee->update($fields);
+    $employee->refresh();
+
+    return response()->json($employee, 200);
+}
 
     // 5. Delete employee
     public function destroy($id)
