@@ -30,10 +30,10 @@ public function store(Request $request)
     try {
         Log::info('🚀 Entered store() method.');
 
-        // Step 1: Validate the request
+        // Step 1: Manually validate the request so we can handle errors cleanly
         Log::info('🛡️ Validating request data...', ['request' => $request->all()]);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
@@ -43,7 +43,25 @@ public function store(Request $request)
             'joining_date' => 'nullable|date',
         ]);
 
-        Log::info('✅ Validation passed.', ['validated' => $validated]);
+        if ($validator->fails()) {
+            $errors = $validator->errors();
+            Log::warning('❌ Validation failed.', ['errors' => $errors]);
+
+            // Custom error for duplicate email
+            if ($errors->has('email') && str_contains($errors->first('email'), 'has already been taken')) {
+                return response()->json([
+                    'error' => 'Email already exists.',
+                    'messages' => $errors,
+                ], 409); // Conflict
+            }
+
+            return response()->json([
+                'error' => 'Validation failed.',
+                'messages' => $errors,
+            ], 422); // Unprocessable Entity
+        }
+
+        $validated = $validator->validated();
 
         // Step 2: Add additional fields
         $validated['role'] = 'employee';
@@ -58,13 +76,6 @@ public function store(Request $request)
 
         return response()->json($employee, 201);
 
-    } catch (ValidationException $e) {
-        Log::warning('❌ Validation failed.', ['errors' => $e->errors()]);
-        return response()->json([
-            'error' => 'Validation failed.',
-            'messages' => $e->errors(),
-        ], 422);
-
     } catch (QueryException $e) {
         Log::error('💥 Database error: ' . $e->getMessage());
         return response()->json([
@@ -76,10 +87,11 @@ public function store(Request $request)
         Log::error('🔥 Unexpected server error: ' . $e->getMessage());
         return response()->json([
             'error' => 'Server error.',
-            'message' => 'An unexpected error occurred.',
+            'message' => $e->getMessage(), // Optional: for debugging
         ], 500);
     }
 }
+
 
     // 4. Update employee
 public function update(Request $request, $id)
