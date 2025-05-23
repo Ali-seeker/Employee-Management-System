@@ -11,59 +11,61 @@ const EmployeeForm = () => {
     const [joiningDate, setJoiningDate] = useState('');
     const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true); // start loading
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true); // start loading
 
-    try {
-        const response = await fetch("http://localhost:8000/api/employees", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                name,
-                email,
-                password,
-                designation,
-                salary: parseFloat(salary),
-                joining_date: new Date().toISOString().split("T")[0],
-            }),
-        });
+  const token = localStorage.getItem('token'); // ✅ Get token
 
-        const data = await response.json();
+  try {
+    const response = await fetch("http://localhost:8000/api/employees", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ✅ Add token here
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        designation,
+        salary: parseFloat(salary),
+        joining_date: new Date().toISOString().split("T")[0],
+      }),
+    });
 
-        if (!response.ok) {
-            // Validation or conflict error
-            if (response.status === 409 && data.messages?.email) {
-                toast.error(data.messages.email[0]); // "The email has already been taken."
-                alert("The email has already been taken")
-            } else if (data.messages) {
-                const firstError = Object.values(data.messages)[0][0];
-                toast.error(firstError);
-            } else {
-                toast.error("Something went wrong.");
-            }
-            return;
-        }
+    const data = await response.json();
 
-        // Success
-        toast.success("Employee added successfully!");
-        // Reset form
-        setName("");
-        setEmail("");
-        setPassword("");
-        setDesignation("");
-        setSalary("");
-        setLoading(false);
-        document.getElementById("my_modal_2").close();
-
-    } catch (error) {
-        toast.error("Server error: " + error.message);
-    } finally {
-        setLoading(false);
+    if (!response.ok) {
+      // Validation or conflict error
+      if (response.status === 409 && data.messages?.email) {
+        toast.error(data.messages.email[0]);
+        alert("The email has already been taken");
+      } else if (data.messages) {
+        const firstError = Object.values(data.messages)[0][0];
+        toast.error(firstError);
+      } else {
+        toast.error("Something went wrong.");
+      }
+      return;
     }
+
+    // Success
+    toast.success("Employee added successfully!");
+    // Reset form
+    setName("");
+    setEmail("");
+    setPassword("");
+    setDesignation("");
+    setSalary("");
+    document.getElementById("my_modal_2").close();
+  } catch (error) {
+    toast.error("Server error: " + error.message);
+  } finally {
+    setLoading(false); // stop loading
+  }
 };
+
 
     return (
         <>

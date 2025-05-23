@@ -43,23 +43,6 @@ public function store(Request $request)
             'joining_date' => 'nullable|date',
         ]);
 
-        if ($validator->fails()) {
-            $errors = $validator->errors();
-            Log::warning('❌ Validation failed.', ['errors' => $errors]);
-
-            // Custom error for duplicate email
-            if ($errors->has('email') && str_contains($errors->first('email'), 'has already been taken')) {
-                return response()->json([
-                    'error' => 'Email already exists.',
-                    'messages' => $errors,
-                ], 409); // Conflict
-            }
-
-            return response()->json([
-                'error' => 'Validation failed.',
-                'messages' => $errors,
-            ], 422); // Unprocessable Entity
-        }
 
         $validated = $validator->validated();
 

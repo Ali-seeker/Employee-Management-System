@@ -12,66 +12,90 @@ const EmployeeList = () => {
     const [updatedSalary, setUpdatedSalary] = useState('');
     const [updatedJoiningDate, setUpdatedJoiningDate] = useState('');
 
-    const fetchEmployees = async () => {
-        try {
-            const res = await fetch("http://localhost:8000/api/employees");
-            const data = await res.json();
-            setEmployees(data);
-            setLoading(false);
-        } catch (error) {
-            toast.error("Failed to fetch employees.");
-            setLoading(false);
-        }
-    };
+   const fetchEmployees = async () => {
+  const token = localStorage.getItem('token'); // No need for await here
+  try {
+    const res = await fetch("http://localhost:8000/api/employees", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ✅ Token added here
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to fetch employees");
+    }
+
+    const data = await res.json();
+    setEmployees(data);
+    setLoading(false);
+  } catch (error) {
+    toast.error("Failed to fetch employees.");
+    setLoading(false);
+  }
+};
 
     useEffect(() => {
         fetchEmployees();
     }, []);
 
     const handleDelete = async (id) => {
-        try {
-            const res = await fetch(`http://localhost:8000/api/employees/${id}`, {
-                method: "DELETE",
-            });
+  const token = localStorage.getItem('token'); // No need for await
+  try {
+    const res = await fetch(`http://localhost:8000/api/employees/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ✅ Token added
+      },
+    });
 
-            if (res.ok) {
-                toast.success("Employee deleted.");
-                fetchEmployees();
-            } else {
-                toast.error("Failed to delete.");
-            }
-        } catch (error) {
-            toast.error("Server error.");
-        }
-    };
+    if (res.ok) {
+      toast.success("Employee deleted.");
+      fetchEmployees(); // Refresh the list
+    } else {
+      toast.error("Failed to delete.");
+    }
+  } catch (error) {
+    toast.error("Server error.");
+  }
+};
+
 
     const handleUpdate = async (e) => {
-        e.preventDefault();
-        try {
-            const res = await fetch(`http://localhost:8000/api/employees/${selectedEmployee.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: updatedName,
-                    designation: updatedDesignation,
-                    salary: parseFloat(updatedSalary),
-                    joining_date: updatedJoiningDate,
-                }),
-            });
+  e.preventDefault();
+  const token = localStorage.getItem('token'); // ✅ Get token
 
-            if (res.ok) {
-                toast.success("Updated successfully!");
-                fetchEmployees();
-                setUpdateModalOpen(false);
-                setSelectedEmployee(null);
-            } else {
-                const data = await res.json();
-                toast.error(data.message || "Update failed.");
-            }
-        } catch (error) {
-            toast.error("Server error.");
-        }
-    };
+  try {
+    const res = await fetch(`http://localhost:8000/api/employees/${selectedEmployee.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ✅ Add token here
+      },
+      body: JSON.stringify({
+        name: updatedName,
+        designation: updatedDesignation,
+        salary: parseFloat(updatedSalary),
+        joining_date: updatedJoiningDate,
+      }),
+    });
+
+    if (res.ok) {
+      toast.success("Updated successfully!");
+      fetchEmployees();
+      setUpdateModalOpen(false);
+      setSelectedEmployee(null);
+    } else {
+      const data = await res.json();
+      toast.error(data.message || "Update failed.");
+    }
+  } catch (error) {
+    toast.error("Server error.");
+  }
+};
+
 
     const openUpdateModal = (employee) => {
         setSelectedEmployee(employee);
